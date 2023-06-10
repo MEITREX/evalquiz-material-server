@@ -1,0 +1,51 @@
+# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
+# More GitHub Actions for Azure: https://github.com/Azure/actions
+
+name: Build and deploy container app to Azure Web App - EvalQuizMaterialServer
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: 'ubuntu-latest'
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Log in to registry
+      uses: docker/login-action@v2
+      with:
+        registry: https://evalquizcontainers.azurecr.io/
+        username: ${{ secrets.AzureAppService_ContainerUsername_28bbc0c1aa1c4ba0a86eb8eccdb1c51c }}
+        password: ${{ secrets.AzureAppService_ContainerPassword_06002efb5b624614b2a1b7e3a5bbe867 }}
+
+    - name: Build and push container image to registry
+      uses: docker/build-push-action@v3
+      with:
+        push: true
+        tags: evalquizcontainers.azurecr.io/${{ secrets.AzureAppService_ContainerUsername_28bbc0c1aa1c4ba0a86eb8eccdb1c51c }}/evalquiz-material-server:${{ github.sha }}
+        file: ./Dockerfile
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: 'production'
+      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
+
+    steps:
+    - name: Deploy to Azure Web App
+      id: deploy-to-webapp
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: 'EvalQuizMaterialServer'
+        slot-name: 'production'
+        publish-profile: ${{ secrets.AzureAppService_PublishProfile_cf37ad777cc24714abb2977818ebc3a3 }}
+        images: 'evalquizcontainers.azurecr.io/${{ secrets.AzureAppService_ContainerUsername_28bbc0c1aa1c4ba0a86eb8eccdb1c51c }}/evalquiz-material-server:${{ github.sha }}'
