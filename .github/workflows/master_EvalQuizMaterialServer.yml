@@ -23,14 +23,14 @@ jobs:
       uses: docker/login-action@v2
       with:
         registry: https://evalquizcontainers.azurecr.io/
-        username: ${{ secrets.AzureAppService_ContainerUsername_28bbc0c1aa1c4ba0a86eb8eccdb1c51c }}
-        password: ${{ secrets.AzureAppService_ContainerPassword_06002efb5b624614b2a1b7e3a5bbe867 }}
+        username: ${{ secrets.AzureAppService_ContainerUsername_94f32dcd15f8459faea1082327732dca }}
+        password: ${{ secrets.AzureAppService_ContainerPassword_30f3974b3a3e467da667ca372fa1cc26 }}
 
     - name: Build and push container image to registry
       uses: docker/build-push-action@v3
       with:
         push: true
-        tags: evalquizcontainers.azurecr.io/${{ secrets.AzureAppService_ContainerUsername_28bbc0c1aa1c4ba0a86eb8eccdb1c51c }}/evalquiz-material-server:${{ github.sha }}
+        tags: evalquizcontainers.azurecr.io/${{ secrets.AzureAppService_ContainerUsername_94f32dcd15f8459faea1082327732dca }}/evalquiz-material-server:${{ github.sha }}
         file: ./Dockerfile
 
   deploy:
@@ -47,5 +47,5 @@ jobs:
       with:
         app-name: 'EvalQuizMaterialServer'
         slot-name: 'production'
-        publish-profile: ${{ secrets.AzureAppService_PublishProfile_cf37ad777cc24714abb2977818ebc3a3 }}
-        images: 'evalquizcontainers.azurecr.io/${{ secrets.AzureAppService_ContainerUsername_28bbc0c1aa1c4ba0a86eb8eccdb1c51c }}/evalquiz-material-server:${{ github.sha }}'
+        publish-profile: ${{ secrets.AzureAppService_PublishProfile_948d97196a564141922113f7b2fbe88e }}
+        images: 'evalquizcontainers.azurecr.io/${{ secrets.AzureAppService_ContainerUsername_94f32dcd15f8459faea1082327732dca }}/evalquiz-material-server:${{ github.sha }}'
