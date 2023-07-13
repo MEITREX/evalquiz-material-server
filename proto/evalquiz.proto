@@ -1,17 +1,20 @@
 syntax = "proto3";
 
 import "google/protobuf/any.proto";
-import "google/protobuf/empty.proto";
 
 service PipelineServer {
     rpc IterateConfig (InternalConfig) returns (stream PipelineStatus) {}
 }
 
 service MaterialServer {
-    rpc UploadMaterial (MaterialUploadData) returns (google.protobuf.Empty) {}
-	rpc DeleteMaterial (String) returns (google.protobuf.Empty) {}
-	rpc GetMaterialHashes (google.protobuf.Empty) returns (ListOfStrings) {}
+    rpc UploadMaterial (stream MaterialUploadData) returns (Empty) {}
+	rpc DeleteMaterial (String) returns (Empty) {}
+	rpc GetMaterialHashes (Empty) returns (ListOfStrings) {}
 	rpc GetMaterial (String) returns (LectureMaterial) {}
+}
+
+message Empty {
+
 }
 
 message String {
