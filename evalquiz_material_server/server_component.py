@@ -1,4 +1,5 @@
 import asyncio
+from pathlib import Path
 from evalquiz_proto.shared.exceptions import (
     DataChunkNotBytesException,
     EmptyUploadException,
@@ -21,20 +22,21 @@ import betterproto
 class MaterialServerService(MaterialServerBase):
     """Serves endpoints for material manipulation."""
 
-    def __init__(self):
+    def __init__(self, material_storage_path: Path):
         self.internal_material_controller = InternalMaterialController()
+        self.material_storage_path = material_storage_path
 
     async def upload_material(
         self, material_upload_data_iterator: AsyncIterator["MaterialUploadData"]
     ) -> "Empty":
-        material_upload_data = [gen async for gen in material_upload_data_iterator()]
-        self._validate_material_upload_data(material_upload_data)
-        lecture_material = material_upload_data[0]
-        for data in material_upload_data[1:]:
-            with open("file.txt", "wb") as binary_file:
-                binary_file.write(data)
+        lecture_material = await material_upload_data_iterator.__anext__()
+        self.internal_material_controller.add_material_async(
+            self.material_storage_path, lecture_material, material_upload_data_iterator
+        )
 
-    def _validate_material_upload_data(material_upload_data: List[Union[LectureMaterial, bytes]]) -> None:
+    def _validate_material_upload_data(
+        material_upload_data: List[Union[LectureMaterial, bytes]]
+    ) -> None:
         if len(material_upload_data) != 0:
             lecture_material = material_upload_data[0]
             type = betterproto.which_one_of(lecture_material, "material_upload_data")[0]
