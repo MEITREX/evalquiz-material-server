@@ -3,3 +3,6 @@ grpcio
 grpcio-tools
 grpclib
 pydantic
+blake3
+pytest
+filetype
