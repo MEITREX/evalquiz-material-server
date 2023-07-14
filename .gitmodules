@@ -1,0 +1,3 @@
+[submodule "evalquiz-proto"]
+	path = evalquiz_proto
+	url = git@github.com:MEITREX/evalquiz-proto.git

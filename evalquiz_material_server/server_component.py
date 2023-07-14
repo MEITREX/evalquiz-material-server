@@ -1,8 +1,8 @@
 import asyncio
-from shared_classes.generated import MaterialServerBase, Empty, ListOfStrings, MaterialUploadData, String, LectureMaterial
+from evalquiz_proto.shared.generated import MaterialServerBase, Empty, ListOfStrings, MaterialUploadData, String, LectureMaterial
 from grpclib.server import Server
 from typing import AsyncIterator
-from shared_classes.internal_material_controller import InternalMaterialController
+from evalquiz_proto.shared import InternalMaterialController
 
 
 class MaterialServerService(MaterialServerBase):
