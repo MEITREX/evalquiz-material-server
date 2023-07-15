@@ -7,3 +7,5 @@ blake3
 pytest
 filetype
 mypy
+pyflakes
+black
