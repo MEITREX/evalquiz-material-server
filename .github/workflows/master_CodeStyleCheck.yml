@@ -14,7 +14,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          ssh-key: ${{secrets.SUBMODULE_DEPLOY_KEY}}
+          ssh-key: |
+            ${{secrets.SELF_DEPLOY_KEY}}
+            ${{secrets.SUBMODULE_DEPLOY_KEY}}
           submodules: recursive
       - name: Set up Python 3.8
         uses: actions/setup-python@v3
