@@ -26,7 +26,7 @@ jobs:
           pyflakes .
       - name: Type checking with mypy
         run: |
-          mypy .
+          mypy --config-file evalquiz_proto/mypy.ini .
       - name: Code format checking with black
         run: |
           black . --check
