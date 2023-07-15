@@ -6,3 +6,4 @@ pydantic
 blake3
 pytest
 filetype
+mypy
