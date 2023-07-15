@@ -1,10 +1,6 @@
 import asyncio
 from pathlib import Path
-from evalquiz_proto.shared.exceptions import (
-    DataChunkNotBytesException,
-    EmptyUploadException,
-    FirstDataChunkNotLectureMaterialException,
-)
+from evalquiz_proto.shared.exceptions import FirstDataChunkNotLectureMaterialException
 from evalquiz_proto.shared.generated import (
     MaterialServerBase,
     Empty,
@@ -14,8 +10,10 @@ from evalquiz_proto.shared.generated import (
     LectureMaterial,
 )
 from grpclib.server import Server
-from typing import AsyncIterator, List, Union
-from evalquiz_proto.shared.internal_material_controller import InternalMaterialController
+from typing import AsyncIterator
+from evalquiz_proto.shared.internal_material_controller import (
+    InternalMaterialController,
+)
 import betterproto
 
 
@@ -30,13 +28,14 @@ class MaterialServerService(MaterialServerBase):
         self, material_upload_data_iterator: AsyncIterator["MaterialUploadData"]
     ) -> "Empty":
         material_upload_data = await material_upload_data_iterator.__anext__()
-        (
-            type,
-            lecture_material
-        ) = betterproto.which_one_of(material_upload_data, "material_upload_data")
+        (type, lecture_material) = betterproto.which_one_of(
+            material_upload_data, "material_upload_data"
+        )
         if lecture_material is not None and type == "lecture_material":
             await self.internal_material_controller.add_material_async(
-                self.material_storage_path, lecture_material, material_upload_data_iterator
+                self.material_storage_path,
+                lecture_material,
+                material_upload_data_iterator,
             )
             return Empty()
         raise FirstDataChunkNotLectureMaterialException()
