@@ -1,4 +1,5 @@
 import asyncio
+import os
 from pathlib import Path
 from evalquiz_proto.shared.exceptions import FirstDataChunkNotLectureMaterialException
 from evalquiz_proto.shared.generated import (
@@ -33,7 +34,7 @@ class MaterialServerService(MaterialServerBase):
         )
         if lecture_material is not None and type == "lecture_material":
             await self.internal_material_controller.add_material_async(
-                self.material_storage_path,
+                self.material_storage_path / lecture_material.hash,
                 lecture_material,
                 material_upload_data_iterator,
             )
@@ -53,7 +54,9 @@ class MaterialServerService(MaterialServerBase):
 
 
 async def main() -> None:
-    material_storage_path = Path("./lecture_materials")
+    material_storage_path = Path(__file__).parent / "lecture_materials"
+    if not os.path.exists(material_storage_path):
+        os.makedirs(material_storage_path)
     server = Server([MaterialServerService(material_storage_path)])
     await server.start("127.0.0.1", 50051)
     await server.wait_closed()

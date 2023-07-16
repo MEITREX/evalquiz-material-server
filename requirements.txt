@@ -5,6 +5,7 @@ grpclib
 pydantic
 blake3
 pytest
+pytest-asyncio
 filetype
 mypy
 pyflakes
