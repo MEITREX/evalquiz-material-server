@@ -12,7 +12,7 @@
 	"customizations": {
 		"vscode": {
 		  "settings": {},
-		  "extensions": ["matangover.mypy", "streetsidesoftware.code-spell-checker", "pbkit.vscode-pbkit", "huang12zheng.protobuf-helper", "ms-python.python", "redhat.vscode-yaml"]
+		  "extensions": ["matangover.mypy", "streetsidesoftware.code-spell-checker", "pbkit.vscode-pbkit", "huang12zheng.protobuf-helper", "ms-python.python", "redhat.vscode-yaml", "njpwerner.autodocstring"]
 		}
 	}
 
