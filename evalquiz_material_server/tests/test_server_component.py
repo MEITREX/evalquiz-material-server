@@ -1,5 +1,6 @@
+import glob
 import os
-from typing import Any, AsyncGenerator, Iterable
+from typing import Any, AsyncGenerator, Generator, Iterable
 from grpclib.testing import ChannelFor
 from pathlib import Path
 import pytest
@@ -59,13 +60,35 @@ def prepare_material_upload_data() -> list[MaterialUploadData]:
     return material_upload_data
 
 
+def delete_all_files_in_folder(folder_path: Path) -> None:
+    """Deletes all files in a folder, non-recursive.
+
+    Args:
+        folder_path (Path): Path to the folder.
+    """
+    files = glob.glob(str(folder_path / "*"))
+    for local_file in files:
+        os.remove(local_file)
+
+
+def file_upload_cleanup(material_storage_path: Path) -> None:
+    """Deletes files that were uploaded for test purposes.
+
+    Args:
+        material_storage_path (Path): The path were the uploaded files are stored.
+    """
+    delete_all_files_in_folder(material_storage_path)
+    os.rmdir(material_storage_path)
+
+
 @pytest.fixture(scope="session")
-def material_server_service() -> MaterialServerService:
+def material_server_service() -> Generator[MaterialServerService, None, None]:
     material_storage_path = Path(__file__).parent / "lecture_materials"
     if not os.path.exists(material_storage_path):
         os.makedirs(material_storage_path)
     material_server_service = MaterialServerService(material_storage_path)
-    return material_server_service
+    yield material_server_service
+    file_upload_cleanup(material_storage_path)
 
 
 def test_start_service(material_server_service: MaterialServerService) -> None:

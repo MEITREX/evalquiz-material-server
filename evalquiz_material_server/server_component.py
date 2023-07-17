@@ -1,7 +1,11 @@
 import asyncio
+import mimetypes
 import os
 from pathlib import Path
-from evalquiz_proto.shared.exceptions import FirstDataChunkNotLectureMaterialException
+from evalquiz_proto.shared.exceptions import (
+    FirstDataChunkNotLectureMaterialException,
+    NoMimetypeMappingException,
+)
 from evalquiz_proto.shared.generated import (
     MaterialServerBase,
     Empty,
@@ -36,6 +40,7 @@ class MaterialServerService(MaterialServerBase):
 
         Raises:
             FirstDataChunkNotLectureMaterialException: Raised, if the first element is not a LectureMaterial.
+            NoMimetypeMappingException: The mimetype in lecture_material.file_type could not be mapped to a file extension.
 
         Returns:
             Empty: Empty gRPC compatible return format. Equivalent to "None".
@@ -45,8 +50,13 @@ class MaterialServerService(MaterialServerBase):
             material_upload_data, "material_upload_data"
         )
         if lecture_material is not None and type == "lecture_material":
+            extension = mimetypes.guess_extension(lecture_material.file_type)
+            if extension is None:
+                raise NoMimetypeMappingException()
+            local_path = self.material_storage_path / lecture_material.hash
+            local_path = local_path.parent / (local_path.name + extension)
             await self.internal_material_controller.add_material_async(
-                self.material_storage_path / lecture_material.hash,
+                local_path,
                 lecture_material,
                 material_upload_data_iterator,
             )
