@@ -5,6 +5,7 @@ from grpclib.testing import ChannelFor
 from pathlib import Path
 import pytest
 from evalquiz_material_server.server_component import MaterialServerService
+from evalquiz_proto.shared.exceptions import FileHasDifferentHashException
 from evalquiz_proto.shared.generated import (
     Empty,
     MaterialServerStub,
@@ -16,7 +17,7 @@ pytest_plugins = ("pytest_asyncio",)
 
 
 async def to_async_iter(input: Iterable[Any]) -> AsyncGenerator[Any, None]:
-    """Helper function to create asynchronous iterator of an Iteratble object, for example a list.
+    """Helper function to create asynchronous iterator of an Iterable object, for example a list.
 
     Args:
         input: The Iterable object
@@ -32,14 +33,14 @@ def prepare_material_upload_data() -> list[MaterialUploadData]:
     """Data preparation function to create example upload data.
 
     Returns:
-        An list with MaterialUploadData elements,
+        A list with MaterialUploadData elements,
         containing a LectureMaterial at the first index
         and binary data of an example file.
     """
     lecture_material = LectureMaterial(
         "Example material",
         None,
-        "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262",
+        "f9f75c3c05c99d69364ae75e028c997fb1a8c209e03a6452efbef6b75784c3ab",
         "text/plain",
         None,
     )
@@ -83,6 +84,12 @@ def file_upload_cleanup(material_storage_path: Path) -> None:
 
 @pytest.fixture(scope="session")
 def material_server_service() -> Generator[MaterialServerService, None, None]:
+    """Pytest fixture of MaterialServerService.
+    Cleans up created files after test execution that uses this fixture.
+
+    Yields:
+        Generator[MaterialServerService, None, None]: Generator with one MaterialServerService element. Yielded until file cleanup.
+    """
     material_storage_path = Path(__file__).parent / "lecture_materials"
     if not os.path.exists(material_storage_path):
         os.makedirs(material_storage_path)
@@ -91,14 +98,15 @@ def material_server_service() -> Generator[MaterialServerService, None, None]:
     file_upload_cleanup(material_storage_path)
 
 
-def test_start_service(material_server_service: MaterialServerService) -> None:
-    pass
-
-
 @pytest.mark.asyncio
 async def test_server_upload_material(
     material_server_service: MaterialServerService,
 ) -> None:
+    """Tests MaterialServerService upload_material method.
+
+    Args:
+        material_server_service (MaterialServerService): Pytest fixture of MaterialServerService
+    """
     material_upload_data = prepare_material_upload_data()
     material_upload_data_iterator = to_async_iter(material_upload_data)
     response = await material_server_service.upload_material(
@@ -108,9 +116,32 @@ async def test_server_upload_material(
 
 
 @pytest.mark.asyncio
+async def test_server_upload_material_hash_inconsistency(
+    material_server_service: MaterialServerService,
+) -> None:
+    """Tests expected failure MaterialServerService when LectureMaterial hashes are inconsistent.
+
+    Args:
+        material_server_service (MaterialServerService): Pytest fixture of MaterialServerService
+    """
+    material_upload_data = prepare_material_upload_data()
+    material_upload_data[
+        0
+    ].lecture_material.hash = "Let's pretend this is a different hash!"
+    material_upload_data_iterator = to_async_iter(material_upload_data)
+    with pytest.raises(FileHasDifferentHashException):
+        await material_server_service.upload_material(material_upload_data_iterator)
+
+
+@pytest.mark.asyncio
 async def test_client_upload_material(
     material_server_service: MaterialServerService,
 ) -> None:
+    """Tests MaterialServerService upload_material method with client-server connection.
+
+    Args:
+        material_server_service (MaterialServerService): Pytest fixture of MaterialServerService
+    """
     async with ChannelFor([material_server_service]) as channel:
         service = MaterialServerStub(channel)
         material_upload_data = prepare_material_upload_data()
@@ -122,9 +153,19 @@ async def test_client_upload_material(
 async def test_client_upload_material_multiple_binaries(
     material_server_service: MaterialServerService,
 ) -> None:
+    """Tests MaterialServerService upload_material method with a partitioned binary that is sent in multiple gRPC stream packets.
+
+    Args:
+        material_server_service (MaterialServerService): Pytest fixture of MaterialServerService
+    """
     async with ChannelFor([material_server_service]) as channel:
         service = MaterialServerStub(channel)
         material_upload_data = prepare_material_upload_data()
+        material_upload_data[
+            0
+        ].lecture_material.hash = (
+            "4ae07713320c64171db6d4c5c7316d643c45eefcb0c36c2e566eb2f3b837cdb8"
+        )
         material_upload_data.append(material_upload_data[1])
         response = await service.upload_material(material_upload_data)
         assert isinstance(response, Empty)
