@@ -1,6 +1,7 @@
 import glob
 import os
-from typing import Any, AsyncGenerator, Generator, Iterable
+from typing import Any, AsyncGenerator, Generator, Iterable, List
+from blake3 import blake3
 from grpclib.testing import ChannelFor
 from pathlib import Path
 import pytest
@@ -149,11 +150,28 @@ async def test_client_upload_material(
         assert isinstance(response, Empty)
 
 
+def calculate_combined_file_hash(material_upload_data: List[MaterialUploadData]) -> str:
+    """Calculated the hash for a partitioned upload, as if it was one file.
+
+    Args:
+        material_upload_data (List[MaterialUploadData]): List of MaterialUploadData containing LectureMaterial at the first index followed by binary data.
+
+    Returns:
+        str: Calculated hash.
+    """
+    combined_data = b""
+    for data in material_upload_data[1:]:
+        combined_data += data.data
+    return blake3(combined_data).hexdigest()
+
+
 @pytest.mark.asyncio
 async def test_client_upload_material_multiple_binaries(
     material_server_service: MaterialServerService,
 ) -> None:
     """Tests MaterialServerService upload_material method with a partitioned binary that is sent in multiple gRPC stream packets.
+    The partitioned binary is combined to validate the correctness of the received file by the server.
+    A combined file hash is calculated to test the correctness of the received file.
 
     Args:
         material_server_service (MaterialServerService): Pytest fixture of MaterialServerService
@@ -161,11 +179,16 @@ async def test_client_upload_material_multiple_binaries(
     async with ChannelFor([material_server_service]) as channel:
         service = MaterialServerStub(channel)
         material_upload_data = prepare_material_upload_data()
+        material_upload_data.append(material_upload_data[1])
+        combined_file_hash = calculate_combined_file_hash(material_upload_data)
+        assert (
+            combined_file_hash
+            == "4ae07713320c64171db6d4c5c7316d643c45eefcb0c36c2e566eb2f3b837cdb8"
+        )
         material_upload_data[
             0
         ].lecture_material.hash = (
             "4ae07713320c64171db6d4c5c7316d643c45eefcb0c36c2e566eb2f3b837cdb8"
         )
-        material_upload_data.append(material_upload_data[1])
         response = await service.upload_material(material_upload_data)
         assert isinstance(response, Empty)
