@@ -12,6 +12,7 @@ from evalquiz_proto.shared.generated import (
     MaterialServerStub,
     LectureMaterial,
     MaterialUploadData,
+    String,
 )
 
 pytest_plugins = ("pytest_asyncio",)
@@ -192,3 +193,26 @@ async def test_client_upload_material_multiple_binaries(
         )
         response = await service.upload_material(material_upload_data)
         assert isinstance(response, Empty)
+
+
+@pytest.mark.asyncio
+async def test_server_get_material(
+    material_server_service: MaterialServerService,
+) -> None:
+    """Tests MaterialServerService get_material method with client-server connection.
+
+    Args:
+        material_server_service (MaterialServerService): Pytest fixture of MaterialServerService
+    """
+    material_upload_data = prepare_material_upload_data()
+    material_upload_data_iterator = to_async_iter(material_upload_data)
+    await material_server_service.upload_material(material_upload_data_iterator)
+    async_iterator = material_server_service.get_material(
+        String(material_upload_data[0].lecture_material.hash)
+    )
+    lecture_material_material_upload_data = await async_iterator.__anext__()
+    file_content_material_upload_data = await async_iterator.__anext__()
+    assert material_upload_data == [
+        lecture_material_material_upload_data,
+        file_content_material_upload_data,
+    ]

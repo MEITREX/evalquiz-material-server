@@ -12,7 +12,6 @@ from evalquiz_proto.shared.generated import (
     ListOfStrings,
     MaterialUploadData,
     String,
-    LectureMaterial,
 )
 from grpclib.server import Server
 from typing import AsyncIterator
@@ -36,7 +35,7 @@ class MaterialServerService(MaterialServerBase):
         Manages a lecture material upload.
 
         Args:
-            material_upload_data_iterator (AsyncIterator[MaterialUploadData]): Included LectureMaterial as the first element and data in bytes as the following elements.
+            material_upload_data_iterator (AsyncIterator[MaterialUploadData]): An Iterator which elements represent packages of the stream. Includes LectureMaterial as the first element and data in bytes as the following elements.
 
         Raises:
             FirstDataChunkNotLectureMaterialException: Raised, if the first element is not a LectureMaterial.
@@ -89,7 +88,9 @@ class MaterialServerService(MaterialServerBase):
         material_hashes = self.internal_material_controller.get_material_hashes()
         return ListOfStrings(material_hashes)
 
-    async def get_material(self, string: "String") -> "LectureMaterial":
+    async def get_material(
+        self, string: "String"
+    ) -> "AsyncIterator[MaterialUploadData]":
         """Asynchronous method that is used by gRPC as an endpoint.
         Returns a specific lecture material for a hash.
 
@@ -97,9 +98,17 @@ class MaterialServerService(MaterialServerBase):
             string (String): Hash of the material to query.
 
         Returns:
-            LectureMaterial: LectureMaterial referenced by the hash.
+            AsyncIterator[MaterialUploadData]: An Iterator which elements represent packages of the stream. Includes LectureMaterial as the first element and data in bytes as the following elements.
         """
-        return self.internal_material_controller.get_material_from_hash(string.value)
+        material_upload_iterator = (
+            self.internal_material_controller.get_material_from_hash_async(string.value)
+        )
+        while True:
+            try:
+                material_upload_data = await material_upload_iterator.__anext__()
+                yield material_upload_data
+            except StopAsyncIteration:
+                break
 
 
 async def main() -> None:
