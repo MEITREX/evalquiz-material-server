@@ -18,3 +18,4 @@ jobs:
       with:
         requirements_path: ./requirements.txt
         publish: true
+        sphinx_version: 6.2.1
