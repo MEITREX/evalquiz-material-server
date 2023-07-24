@@ -1,3 +1,4 @@
+import asyncio
 import glob
 import os
 from typing import Any, AsyncGenerator, Generator, Iterable, List
@@ -5,7 +6,7 @@ from blake3 import blake3
 from grpclib.testing import ChannelFor
 from pathlib import Path
 import pytest
-from evalquiz_material_server.server_component import MaterialServerService
+from evalquiz_material_server.server_component import MaterialServerService, main
 from evalquiz_proto.shared.exceptions import FileHasDifferentHashException
 from evalquiz_proto.shared.generated import (
     Empty,
