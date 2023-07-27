@@ -11,6 +11,7 @@ mypy
 pyflakes
 black
 jsonpickle
-apscheduler
+schedule
 sphinx
 sphinx_rtd_theme
+pymongo

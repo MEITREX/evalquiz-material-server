@@ -1,6 +1,6 @@
-import asyncio
 import mimetypes
 import os
+import asyncio
 from pathlib import Path
 from evalquiz_proto.shared.exceptions import (
     FirstDataChunkNotLectureMaterialException,
@@ -19,8 +19,6 @@ from evalquiz_proto.shared.internal_material_controller import (
     InternalMaterialController,
 )
 import betterproto
-import apscheduler
-
 
 class MaterialServerService(MaterialServerBase):
     """Serves endpoints for material manipulation."""
@@ -28,8 +26,7 @@ class MaterialServerService(MaterialServerBase):
     def __init__(
         self,
         material_storage_path: Path,
-        material_controller_config_path: Optional[Path] = None,
-        backup_interval: float = 1.0,
+        material_controller_config_path: Optional[Path] = None
     ) -> None:
         """Constructor of MaterialServerService.
 
@@ -42,8 +39,6 @@ class MaterialServerService(MaterialServerBase):
             material_controller_config_path
         )
         self.material_storage_path = material_storage_path
-        self.backup_interval = backup_interval
-        self.start_backup_job()
 
     async def upload_material(
         self, material_upload_data_iterator: AsyncIterator["MaterialUploadData"]
@@ -90,6 +85,7 @@ class MaterialServerService(MaterialServerBase):
             Empty: Empty gRPC compatible return format. Equivalent to "None".
         """
         self.internal_material_controller.delete_material(string.value)
+        self.internal_material_controller.serialize_to_config()
         return Empty()
 
     async def get_material_hashes(self, empty: "Empty") -> "ListOfStrings":
@@ -127,15 +123,9 @@ class MaterialServerService(MaterialServerBase):
             except StopAsyncIteration:
                 break
 
-    def start_backup_job(self) -> None:
+    async def start_backup_job(self) -> None:
         """Backups state of InternalMaterialController every backup_interval in minutes."""
-        scheduler = apscheduler.schedulers.asyncio.AsyncIOScheduler()
-        scheduler.add_job(
-            lambda: self.internal_material_controller.serialize_to_config(),
-            "interval",
-            minutes=self.backup_interval,
-        )
-        scheduler.start()
+        self.internal_material_controller.serialize_to_config()
 
 
 async def main() -> None:
