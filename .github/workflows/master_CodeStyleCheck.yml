@@ -15,19 +15,15 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: recursive
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-      - name: Linting with pyflakes
-        run: |
+      - name: Build and run dev container task
+        uses: devcontainers/ci@v0.3
+        with:
+          runCmd: |
+          # Linting with pyflakes
           pyflakes .
-      - name: Type checking with mypy
-        run: |
+          # Type checking with mypy
           mypy .
-      - name: Code format checking with black
-        run: |
+          # Code format checking with black
           black . --check
-      - name: Test with pytest
-        run: |
+          Test with pytest
           pytest .
