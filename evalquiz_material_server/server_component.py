@@ -14,11 +14,12 @@ from evalquiz_proto.shared.generated import (
     String,
 )
 from grpclib.server import Server
-from typing import AsyncIterator, Optional
+from typing import AsyncIterator
 from evalquiz_proto.shared.internal_material_controller import (
     InternalMaterialController,
 )
 import betterproto
+
 
 class MaterialServerService(MaterialServerBase):
     """Serves endpoints for material manipulation."""
@@ -26,25 +27,24 @@ class MaterialServerService(MaterialServerBase):
     def __init__(
         self,
         material_storage_path: Path,
-        material_controller_config_path: Optional[Path] = None
+        internal_material_controller: InternalMaterialController = InternalMaterialController(),
     ) -> None:
         """Constructor of MaterialServerService.
 
         Args:
             material_storage_path (Path): Specifies the path where lecture materials are stored.
-            material_controller_config_path (Optional[Path], optional): Specifies where backups of the InternalMaterialController state are saved. Defaults to None.
-            backup_interval (float, optional): The interval of state backups in minutes. Defaults to 1.0.
+            internal_material_controller: (InternalMaterialController): A custom material controller can be passed as an argument, otherwise a InternalMaterialController with default arguments is initialized.
         """
-        self.internal_material_controller = InternalMaterialController(
-            material_controller_config_path
-        )
         self.material_storage_path = material_storage_path
+        self.internal_material_controller = internal_material_controller
 
     async def upload_material(
         self, material_upload_data_iterator: AsyncIterator["MaterialUploadData"]
     ) -> "Empty":
         """Asynchronous method that is used by gRPC as an endpoint.
         Manages a lecture material upload.
+        Note on how local_path is built: The file extension is added to the hash to enable mimetype recognition when loading the lecture material:
+        When InternalMaterialController.load_material is invoked.
 
         Args:
             material_upload_data_iterator (AsyncIterator[MaterialUploadData]): An Iterator which elements represent packages of the stream. Includes LectureMaterial as the first element and data in bytes as the following elements.
@@ -85,7 +85,6 @@ class MaterialServerService(MaterialServerBase):
             Empty: Empty gRPC compatible return format. Equivalent to "None".
         """
         self.internal_material_controller.delete_material(string.value)
-        self.internal_material_controller.serialize_to_config()
         return Empty()
 
     async def get_material_hashes(self, empty: "Empty") -> "ListOfStrings":
@@ -122,10 +121,6 @@ class MaterialServerService(MaterialServerBase):
                 yield material_upload_data
             except StopAsyncIteration:
                 break
-
-    async def start_backup_job(self) -> None:
-        """Backups state of InternalMaterialController every backup_interval in minutes."""
-        self.internal_material_controller.serialize_to_config()
 
 
 async def main() -> None:

@@ -1,19 +1,27 @@
-import asyncio
 import glob
+import mimetypes
 import os
 from typing import Any, AsyncGenerator, Generator, Iterable, List
 from blake3 import blake3
 from grpclib.testing import ChannelFor
 from pathlib import Path
+from pymongo import MongoClient
 import pytest
-from evalquiz_material_server.server_component import MaterialServerService, main
-from evalquiz_proto.shared.exceptions import FileHasDifferentHashException
+from evalquiz_material_server.server_component import MaterialServerService
+from evalquiz_proto.shared.exceptions import (
+    FileHasDifferentHashException,
+    NoMimetypeMappingException,
+)
 from evalquiz_proto.shared.generated import (
     Empty,
     MaterialServerStub,
     LectureMaterial,
     MaterialUploadData,
     String,
+)
+from evalquiz_proto.shared.internal_lecture_material import InternalLectureMaterial
+from evalquiz_proto.shared.internal_material_controller import (
+    InternalMaterialController,
 )
 
 pytest_plugins = ("pytest_asyncio",)
@@ -88,6 +96,8 @@ def file_upload_cleanup(material_storage_path: Path) -> None:
 @pytest.fixture(scope="session")
 def material_server_service() -> Generator[MaterialServerService, None, None]:
     """Pytest fixture of MaterialServerService.
+    Initializes InternalMaterialController with custom test database.
+    Test database is emptied before tests are executed.
     Cleans up created files after test execution that uses this fixture.
 
     Yields:
@@ -96,7 +106,15 @@ def material_server_service() -> Generator[MaterialServerService, None, None]:
     material_storage_path = Path(__file__).parent / "lecture_materials"
     if not os.path.exists(material_storage_path):
         os.makedirs(material_storage_path)
-    material_server_service = MaterialServerService(material_storage_path)
+    internal_material_controller = InternalMaterialController(
+        mongodb_database="lecture_material_test_db"
+    )
+    internal_material_controller.mongodb_client.drop_database(
+        "lecture_material_test_db"
+    )
+    material_server_service = MaterialServerService(
+        material_storage_path, internal_material_controller
+    )
     yield material_server_service
     file_upload_cleanup(material_storage_path)
 
@@ -131,9 +149,19 @@ async def test_server_upload_material_hash_inconsistency(
     material_upload_data[
         0
     ].lecture_material.hash = "Let's pretend this is a different hash!"
+    lecture_material = material_upload_data[0].lecture_material
     material_upload_data_iterator = to_async_iter(material_upload_data)
     with pytest.raises(FileHasDifferentHashException):
         await material_server_service.upload_material(material_upload_data_iterator)
+    extension = mimetypes.guess_extension(lecture_material.file_type)
+    if extension is None:
+        raise NoMimetypeMappingException()
+    test_path = (
+        Path(__file__).parent
+        / "lecture_materials"
+        / (lecture_material.hash + extension)
+    )
+    assert not os.path.exists(test_path)
 
 
 @pytest.mark.asyncio
@@ -217,3 +245,24 @@ async def test_server_get_material(
         lecture_material_material_upload_data,
         file_content_material_upload_data,
     ]
+
+
+def test_pymongo_connection() -> None:
+    """Tests if connection to database can be established."""
+    client: MongoClient[dict[str, Any]] = MongoClient(
+        "evalquiz-material-server-db-1", 27017
+    )
+    client.drop_database("lecture_material_test_db")
+    lecture_material_test_db = client.lecture_material_test_db
+    internal_lecture_materials = lecture_material_test_db.internal_lecture_materials
+    internal_lecture_material = InternalLectureMaterial(
+        Path(__file__).parent
+        / "../../evalquiz_proto/tests/shared/example_materials/modified_example.txt",
+        LectureMaterial(
+            reference="Modified example textfile",
+            hash="068aee4ee49d6cabb1576286108939205260d07cadeaaa249b352487bfe4bc3d",
+            file_type="text/plain",
+        ),
+    )
+    mongodb_document = internal_lecture_material.to_mongodb_document()
+    internal_lecture_materials.insert_one(mongodb_document)
