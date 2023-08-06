@@ -19,11 +19,11 @@ jobs:
         uses: devcontainers/ci@v0.3
         with:
           runCmd: |
-          # Linting with pyflakes
-          pyflakes .
-          # Type checking with mypy
-          mypy .
-          # Code format checking with black
-          black . --check
-          Test with pytest
-          pytest .
+            # Linting with pyflakes
+            pyflakes .
+            # Type checking with mypy
+            mypy .
+            # Code format checking with black
+            black . --check
+            Test with pytest
+            pytest .
