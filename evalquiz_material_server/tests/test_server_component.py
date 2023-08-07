@@ -249,9 +249,7 @@ async def test_server_get_material(
 
 def test_pymongo_connection() -> None:
     """Tests if connection to database can be established."""
-    client: MongoClient[dict[str, Any]] = MongoClient(
-        "evalquiz-material-server-db-1", 27017
-    )
+    client: MongoClient[dict[str, Any]] = MongoClient("db", 27017)
     client.drop_database("lecture_material_test_db")
     lecture_material_test_db = client.lecture_material_test_db
     internal_lecture_materials = lecture_material_test_db.internal_lecture_materials
