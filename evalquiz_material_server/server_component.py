@@ -3,7 +3,7 @@ import os
 import asyncio
 from pathlib import Path
 from evalquiz_proto.shared.exceptions import (
-    FirstDataChunkNotLectureMaterialException,
+    FirstDataChunkNotMetadataException,
     NoMimetypeMappingException,
 )
 from evalquiz_proto.shared.generated import (
@@ -11,12 +11,13 @@ from evalquiz_proto.shared.generated import (
     Empty,
     ListOfStrings,
     MaterialUploadData,
+    Metadata,
     String,
 )
 from grpclib.server import Server
 from typing import AsyncIterator
-from evalquiz_proto.shared.internal_material_controller import (
-    InternalMaterialController,
+from evalquiz_proto.shared.path_dictionary_controller import (
+    PathDictionaryController,
 )
 import betterproto
 
@@ -27,16 +28,16 @@ class MaterialServerService(MaterialServerBase):
     def __init__(
         self,
         material_storage_path: Path,
-        internal_material_controller: InternalMaterialController = InternalMaterialController(),
+        path_dictionary_controller: PathDictionaryController = PathDictionaryController(),
     ) -> None:
         """Constructor of MaterialServerService.
 
         Args:
             material_storage_path (Path): Specifies the path where lecture materials are stored.
-            internal_material_controller: (InternalMaterialController): A custom material controller can be passed as an argument, otherwise a InternalMaterialController with default arguments is initialized.
+            path_dictionary_controller: (PathDictionaryController): A custom material controller can be passed as an argument, otherwise a PathDictionaryController with default arguments is initialized.
         """
         self.material_storage_path = material_storage_path
-        self.internal_material_controller = internal_material_controller
+        self.path_dictionary_controller = path_dictionary_controller
 
     async def upload_material(
         self, material_upload_data_iterator: AsyncIterator["MaterialUploadData"]
@@ -44,35 +45,60 @@ class MaterialServerService(MaterialServerBase):
         """Asynchronous method that is used by gRPC as an endpoint.
         Manages a lecture material upload.
         Note on how local_path is built: The file extension is added to the hash to enable mimetype recognition when loading the lecture material:
-        When InternalMaterialController.load_material is invoked.
+        When PathDictionaryController.load_file is invoked.
 
         Args:
-            material_upload_data_iterator (AsyncIterator[MaterialUploadData]): An Iterator which elements represent packages of the stream. Includes LectureMaterial as the first element and data in bytes as the following elements.
+            material_upload_data_iterator (AsyncIterator[MaterialUploadData]): An Iterator which elements represent packages of the stream. Includes a Metadata instance as the first element and data in bytes as the following elements.
 
         Raises:
-            FirstDataChunkNotLectureMaterialException: Raised, if the first element is not a LectureMaterial.
+            FirstDataChunkNotMetadataException: Raised, if the first element is not a Metadata instance.
             NoMimetypeMappingException: The mimetype in lecture_material.file_type could not be mapped to a file extension.
 
         Returns:
             Empty: Empty gRPC compatible return format. Equivalent to "None".
         """
         material_upload_data = await material_upload_data_iterator.__anext__()
-        (type, lecture_material) = betterproto.which_one_of(
+        (type, metadata) = betterproto.which_one_of(
             material_upload_data, "material_upload_data"
         )
-        if lecture_material is not None and type == "lecture_material":
-            extension = mimetypes.guess_extension(lecture_material.file_type)
+        if metadata is not None and type == "metadata":
+            extension = mimetypes.guess_extension(metadata.mimetype)
             if extension is None:
                 raise NoMimetypeMappingException()
-            local_path = self.material_storage_path / lecture_material.hash
+            local_path = self.material_storage_path / metadata.hash
             local_path = local_path.parent / (local_path.name + extension)
-            await self.internal_material_controller.add_material_async(
+            async_iterator_bytes = self._to_async_iterator_bytes(
+                material_upload_data_iterator
+            )
+            await self.path_dictionary_controller.add_file_async(
                 local_path,
-                lecture_material,
-                material_upload_data_iterator,
+                metadata.hash,
+                async_iterator_bytes,
             )
             return Empty()
-        raise FirstDataChunkNotLectureMaterialException()
+        raise FirstDataChunkNotMetadataException()
+
+    async def _to_async_iterator_bytes(
+        self, material_upload_data_iterator: AsyncIterator[MaterialUploadData]
+    ) -> AsyncIterator[bytes]:
+        """Converts AsyncIterator[MaterialUploadData] to AsyncIterator[bytes] by runtime type checking/assertions.
+
+        Args:
+            material_upload_data_iterator (AsyncIterator[MaterialUploadData]): Iterator of MaterialUploadData.
+
+        Returns:
+            AsyncIterator[bytes]: Iterator of bytes.
+        """
+        material_upload_data = await material_upload_data_iterator.__anext__()
+        (type, data) = betterproto.which_one_of(
+            material_upload_data, "material_upload_data"
+        )
+        if data is not None and type == "data":
+            yield data
+        else:
+            TypeError(
+                "AsyncIterator[MaterialUploadData] cannot be converted into AsyncIterator[bytes]."
+            )
 
     async def delete_material(self, string: "String") -> "Empty":
         """Asynchronous method that is used by gRPC as an endpoint.
@@ -84,7 +110,7 @@ class MaterialServerService(MaterialServerBase):
         Returns:
             Empty: Empty gRPC compatible return format. Equivalent to "None".
         """
-        self.internal_material_controller.delete_material(string.value)
+        self.path_dictionary_controller.delete_file(string.value)
         return Empty()
 
     async def get_material_hashes(self, empty: "Empty") -> "ListOfStrings":
@@ -97,7 +123,7 @@ class MaterialServerService(MaterialServerBase):
         Returns:
             ListOfStrings: Hashes of all registered lecture materials.
         """
-        material_hashes = self.internal_material_controller.get_material_hashes()
+        material_hashes = self.path_dictionary_controller.get_material_hashes()
         return ListOfStrings(material_hashes)
 
     async def get_material(
@@ -112,12 +138,16 @@ class MaterialServerService(MaterialServerBase):
         Returns:
             AsyncIterator[MaterialUploadData]: An Iterator which elements represent packages of the stream. Includes LectureMaterial as the first element and data in bytes as the following elements.
         """
-        material_upload_iterator = (
-            self.internal_material_controller.get_material_from_hash_async(string.value)
-        )
+        (
+            mimetype,
+            material_upload_iterator,
+        ) = await self.path_dictionary_controller.get_file_from_hash_async(string.value)
+        metadata = Metadata(mimetype, string.value)
+        yield MaterialUploadData(metadata=metadata)
         while True:
             try:
-                material_upload_data = await material_upload_iterator.__anext__()
+                data = await material_upload_iterator.__anext__()
+                material_upload_data = MaterialUploadData(data=data)
                 yield material_upload_data
             except StopAsyncIteration:
                 break

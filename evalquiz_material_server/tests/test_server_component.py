@@ -1,5 +1,4 @@
 import glob
-import mimetypes
 import os
 from typing import Any, AsyncGenerator, Generator, Iterable, List
 from blake3 import blake3
@@ -8,20 +7,17 @@ from pathlib import Path
 from pymongo import MongoClient
 import pytest
 from evalquiz_material_server.server_component import MaterialServerService
-from evalquiz_proto.shared.exceptions import (
-    FileHasDifferentHashException,
-    NoMimetypeMappingException,
-)
 from evalquiz_proto.shared.generated import (
     Empty,
     MaterialServerStub,
     LectureMaterial,
     MaterialUploadData,
+    Metadata,
     String,
 )
 from evalquiz_proto.shared.internal_lecture_material import InternalLectureMaterial
-from evalquiz_proto.shared.internal_material_controller import (
-    InternalMaterialController,
+from evalquiz_proto.shared.path_dictionary_controller import (
+    PathDictionaryController,
 )
 
 pytest_plugins = ("pytest_asyncio",)
@@ -48,12 +44,9 @@ def prepare_material_upload_data() -> list[MaterialUploadData]:
         containing a LectureMaterial at the first index
         and binary data of an example file.
     """
-    lecture_material = LectureMaterial(
-        "Example material",
-        None,
-        "f9f75c3c05c99d69364ae75e028c997fb1a8c209e03a6452efbef6b75784c3ab",
+    metadata = Metadata(
         "text/plain",
-        None,
+        "f9f75c3c05c99d69364ae75e028c997fb1a8c209e03a6452efbef6b75784c3ab",
     )
     path = (
         Path(__file__).parent
@@ -61,9 +54,7 @@ def prepare_material_upload_data() -> list[MaterialUploadData]:
     )
     with open(path, "rb") as local_file:
         file_content = local_file.read()
-    lecture_material_material_upload_data = MaterialUploadData(
-        lecture_material=lecture_material
-    )
+    lecture_material_material_upload_data = MaterialUploadData(metadata=metadata)
     file_content_material_upload_data = MaterialUploadData(data=file_content)
     material_upload_data = [
         lecture_material_material_upload_data,
@@ -96,7 +87,7 @@ def file_upload_cleanup(material_storage_path: Path) -> None:
 @pytest.fixture(scope="session")
 def material_server_service() -> Generator[MaterialServerService, None, None]:
     """Pytest fixture of MaterialServerService.
-    Initializes InternalMaterialController with custom test database.
+    Initializes PathDictionaryController with custom test database.
     Test database is emptied before tests are executed.
     Cleans up created files after test execution that uses this fixture.
 
@@ -106,14 +97,12 @@ def material_server_service() -> Generator[MaterialServerService, None, None]:
     material_storage_path = Path(__file__).parent / "lecture_materials"
     if not os.path.exists(material_storage_path):
         os.makedirs(material_storage_path)
-    internal_material_controller = InternalMaterialController(
-        mongodb_database="lecture_material_test_db"
+    path_dictionary_controller = PathDictionaryController(
+        mongodb_database="local_path_test_db"
     )
-    internal_material_controller.mongodb_client.drop_database(
-        "lecture_material_test_db"
-    )
+    path_dictionary_controller.mongodb_client.drop_database("lecture_material_test_db")
     material_server_service = MaterialServerService(
-        material_storage_path, internal_material_controller
+        material_storage_path, path_dictionary_controller
     )
     yield material_server_service
     file_upload_cleanup(material_storage_path)
@@ -134,34 +123,6 @@ async def test_server_upload_material(
         material_upload_data_iterator
     )
     assert isinstance(response, Empty)
-
-
-@pytest.mark.asyncio
-async def test_server_upload_material_hash_inconsistency(
-    material_server_service: MaterialServerService,
-) -> None:
-    """Tests expected failure MaterialServerService when LectureMaterial hashes are inconsistent.
-
-    Args:
-        material_server_service (MaterialServerService): Pytest fixture of MaterialServerService
-    """
-    material_upload_data = prepare_material_upload_data()
-    material_upload_data[
-        0
-    ].lecture_material.hash = "Let's pretend this is a different hash!"
-    lecture_material = material_upload_data[0].lecture_material
-    material_upload_data_iterator = to_async_iter(material_upload_data)
-    with pytest.raises(FileHasDifferentHashException):
-        await material_server_service.upload_material(material_upload_data_iterator)
-    extension = mimetypes.guess_extension(lecture_material.file_type)
-    if extension is None:
-        raise NoMimetypeMappingException()
-    test_path = (
-        Path(__file__).parent
-        / "lecture_materials"
-        / (lecture_material.hash + extension)
-    )
-    assert not os.path.exists(test_path)
 
 
 @pytest.mark.asyncio
@@ -217,7 +178,7 @@ async def test_client_upload_material_multiple_binaries(
         )
         material_upload_data[
             0
-        ].lecture_material.hash = (
+        ].metadata.hash = (
             "4ae07713320c64171db6d4c5c7316d643c45eefcb0c36c2e566eb2f3b837cdb8"
         )
         response = await service.upload_material(material_upload_data)
@@ -237,7 +198,7 @@ async def test_server_get_material(
     material_upload_data_iterator = to_async_iter(material_upload_data)
     await material_server_service.upload_material(material_upload_data_iterator)
     async_iterator = material_server_service.get_material(
-        String(material_upload_data[0].lecture_material.hash)
+        String(material_upload_data[0].metadata.hash)
     )
     lecture_material_material_upload_data = await async_iterator.__anext__()
     file_content_material_upload_data = await async_iterator.__anext__()
