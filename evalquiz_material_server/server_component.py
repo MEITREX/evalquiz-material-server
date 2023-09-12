@@ -160,6 +160,7 @@ async def main() -> None:
         os.makedirs(material_storage_path)
     server = Server([MaterialServerService(material_storage_path)])
     await server.start("127.0.0.1", 50051)
+    print("Server started at port 50051.", flush=True)
     await server.wait_closed()
 
 
