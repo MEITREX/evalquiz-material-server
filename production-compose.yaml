@@ -2,11 +2,11 @@ services:
   app:
     build:
       context: .
-    volumes:
-      - ./:/evalquiz-material-server
+      dockerfile: production-dockerfile
+    image: evalquizcontainers.azurecr.io/evalquiz-material-server
     command: python -m evalquiz_material_server.server_component
     ports:
-      - 50052:50051
+      - 50051:50051
     links:
       - db
   db:
@@ -14,13 +14,5 @@ services:
     restart: always
     volumes:
       - mongodb:/data/db
-  mongoexpress:
-    image: mongo-express
-    ports:
-        - "8082:8081"
-    links:
-      - db
-    environment: 
-        - ME_CONFIG_MONGODB_URL=mongodb://db:27017
 volumes:
   mongodb:
