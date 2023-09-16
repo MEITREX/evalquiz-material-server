@@ -1,6 +1,7 @@
 import mimetypes
 import os
 import asyncio
+from blake3 import blake3
 from pathlib import Path
 from evalquiz_proto.shared.exceptions import (
     FirstDataChunkNotMetadataException,
@@ -65,18 +66,55 @@ class MaterialServerService(MaterialServerBase):
             extension = mimetypes.guess_extension(metadata.mimetype)
             if extension is None:
                 raise NoMimetypeMappingException()
-            local_path = self.material_storage_path / metadata.hash
-            local_path = local_path.parent / (local_path.name + extension)
             async_iterator_bytes = self._to_async_iterator_bytes(
                 material_upload_data_iterator
             )
-            await self.path_dictionary_controller.add_file_async(
-                local_path,
-                metadata.hash,
-                async_iterator_bytes,
+            load_local_path = await self._load_from_binary_iterator(
+                async_iterator_bytes
+            )
+            hash = self._calculate_hash(load_local_path)
+            local_path = self.material_storage_path / hash
+            local_path = local_path.parent / (local_path.name + extension)
+            self.path_dictionary_controller.copy_and_load_file(
+                load_local_path, local_path, hash, metadata.name
             )
             return Empty()
         raise FirstDataChunkNotMetadataException()
+
+    async def _load_from_binary_iterator(
+        self, binary_iterator: AsyncIterator[bytes]
+    ) -> Path:
+        """Loads file from binary into into `/tmp` folder.
+
+        Args:
+            binary_iterator (AsyncIterator[bytes]): Binary iterator to work with.
+
+        Returns:
+            Path: Path to the file in `/tmp`.
+        """
+        local_path = Path("/tmp/current_evalquiz_upload")
+        with open(local_path, "ab") as local_file:
+            local_file.truncate(0)
+            while True:
+                try:
+                    data = await binary_iterator.__anext__()
+                    local_file.write(data)
+                except StopAsyncIteration:
+                    break
+        return local_path
+
+    def _calculate_hash(self, local_path: Path) -> str:
+        """Calculates blake3 hash of local file.
+
+        Args:
+            local_path (Path): Path to local file.
+
+        Returns:
+            str: Resulting hash.
+        """
+        with open(local_path, "rb") as local_file:
+            file_content = local_file.read()
+            return blake3(file_content).hexdigest()
 
     async def _to_async_iterator_bytes(
         self, material_upload_data_iterator: AsyncIterator[MaterialUploadData]
@@ -125,6 +163,20 @@ class MaterialServerService(MaterialServerBase):
         """
         material_hashes = self.path_dictionary_controller.get_material_hashes()
         return ListOfStrings(material_hashes)
+
+    async def get_material_name(self, string: "String") -> "String":
+        """Asynchronous method that is used by gRPC as an endpoint.
+        Returns material name of a lecture material hash.
+
+        Args:
+            string (String): The hash of the lecture material.
+
+        Returns:
+            String: Material name, as specified in PathDictionaryController.
+        """
+        hash = string.value
+        name = self.path_dictionary_controller.get_material_name(hash)
+        return String(name)
 
     async def get_material(
         self, string: "String"

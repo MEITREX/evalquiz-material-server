@@ -178,7 +178,7 @@ async def test_client_upload_material_multiple_binaries(
         )
         material_upload_data[
             0
-        ].metadata.hash = (
+        ].metadata.name = (
             "4ae07713320c64171db6d4c5c7316d643c45eefcb0c36c2e566eb2f3b837cdb8"
         )
         response = await service.upload_material(material_upload_data)
@@ -198,7 +198,7 @@ async def test_server_get_material(
     material_upload_data_iterator = to_async_iter(material_upload_data)
     await material_server_service.upload_material(material_upload_data_iterator)
     async_iterator = material_server_service.get_material(
-        String(material_upload_data[0].metadata.hash)
+        String(material_upload_data[0].metadata.name)
     )
     lecture_material_material_upload_data = await async_iterator.__anext__()
     file_content_material_upload_data = await async_iterator.__anext__()
