@@ -4,6 +4,8 @@ services:
       context: .
     links:
       - db
+    ports:
+      - 50051:50051
   db:
     image: mongo
     restart: always
@@ -12,7 +14,7 @@ services:
   mongoexpress:
     image: mongo-express
     ports:
-        - "8082:8081"
+        - "8081:8081"
     links:
       - db
     environment: 

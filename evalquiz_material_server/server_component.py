@@ -1,4 +1,3 @@
-import mimetypes
 import os
 import asyncio
 from blake3 import blake3
@@ -17,6 +16,7 @@ from evalquiz_proto.shared.generated import (
 )
 from grpclib.server import Server
 from typing import AsyncIterator
+from evalquiz_proto.shared.mimetype_resolver import MimetypeResolver
 from evalquiz_proto.shared.path_dictionary_controller import (
     PathDictionaryController,
 )
@@ -32,6 +32,7 @@ class MaterialServerService(MaterialServerBase):
         path_dictionary_controller: PathDictionaryController = PathDictionaryController(),
     ) -> None:
         """Constructor of MaterialServerService.
+        Creates `material_storage_path` folder, if not existent.
 
         Args:
             material_storage_path (Path): Specifies the path where lecture materials are stored.
@@ -39,6 +40,8 @@ class MaterialServerService(MaterialServerBase):
         """
         self.material_storage_path = material_storage_path
         self.path_dictionary_controller = path_dictionary_controller
+        if not os.path.exists(material_storage_path):
+            os.mkdir(material_storage_path)
 
     async def upload_material(
         self, material_upload_data_iterator: AsyncIterator["MaterialUploadData"]
@@ -63,7 +66,7 @@ class MaterialServerService(MaterialServerBase):
             material_upload_data, "material_upload_data"
         )
         if metadata is not None and type == "metadata":
-            extension = mimetypes.guess_extension(metadata.mimetype)
+            extension = MimetypeResolver.fixed_guess_extension(metadata.mimetype)
             if extension is None:
                 raise NoMimetypeMappingException()
             async_iterator_bytes = self._to_async_iterator_bytes(
@@ -211,7 +214,7 @@ async def main() -> None:
     if not os.path.exists(material_storage_path):
         os.makedirs(material_storage_path)
     server = Server([MaterialServerService(material_storage_path)])
-    await server.start("127.0.0.1", 50051)
+    await server.start("0.0.0.0", 50051)
     print("Server started at port 50051.", flush=True)
     await server.wait_closed()
 
