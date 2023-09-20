@@ -2,22 +2,22 @@ services:
   app:
     build:
       context: .
-    links:
-      - db
+    depends_on:
+      - material-server-db
     ports:
       - 50051:50051
-  db:
+  material-server-db:
     image: mongo
     restart: always
     volumes:
-      - mongodb:/data/db
+      - material-server-mongodb:/data/db
   mongoexpress:
     image: mongo-express
     ports:
-        - "8081:8081"
-    links:
-      - db
-    environment: 
-        - ME_CONFIG_MONGODB_URL=mongodb://db:27017
+      - "8081:8081"
+    depends_on:
+      - material-server-db
+    environment:
+      - ME_CONFIG_MONGODB_URL=mongodb://db:27017
 volumes:
-  mongodb:
+  material-server-mongodb:

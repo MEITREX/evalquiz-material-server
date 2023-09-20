@@ -98,7 +98,8 @@ def material_server_service() -> Generator[MaterialServerService, None, None]:
     if not os.path.exists(material_storage_path):
         os.makedirs(material_storage_path)
     path_dictionary_controller = PathDictionaryController(
-        mongodb_database="local_path_test_db"
+        MongoClient("material-server-db", 27017),
+        "local_path_test_db"
     )
     path_dictionary_controller.mongodb_client.drop_database("lecture_material_test_db")
     material_server_service = MaterialServerService(
@@ -210,7 +211,7 @@ async def test_server_get_material(
 
 def test_pymongo_connection() -> None:
     """Tests if connection to database can be established."""
-    client: MongoClient[dict[str, Any]] = MongoClient("db", 27017)
+    client: MongoClient[dict[str, Any]] = MongoClient("material-server-db", 27017)
     client.drop_database("lecture_material_test_db")
     lecture_material_test_db = client.lecture_material_test_db
     internal_lecture_materials = lecture_material_test_db.internal_lecture_materials

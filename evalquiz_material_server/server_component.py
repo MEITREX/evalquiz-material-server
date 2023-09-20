@@ -2,6 +2,8 @@ import os
 import asyncio
 from blake3 import blake3
 from pathlib import Path
+
+from pymongo import MongoClient
 from evalquiz_proto.shared.exceptions import (
     FirstDataChunkNotMetadataException,
     NoMimetypeMappingException,
@@ -29,7 +31,7 @@ class MaterialServerService(MaterialServerBase):
     def __init__(
         self,
         material_storage_path: Path,
-        path_dictionary_controller: PathDictionaryController = PathDictionaryController(),
+        path_dictionary_controller: PathDictionaryController = PathDictionaryController(MongoClient("material-server-db", 27017)),
     ) -> None:
         """Constructor of MaterialServerService.
         Creates `material_storage_path` folder, if not existent.
