@@ -16,8 +16,8 @@ sphinx_rtd_theme
 sys.path.insert(0, os.path.abspath(".."))
 
 project = "evalquiz-material-server"
-copyright = "2023, Author"
-author = "Author"
+copyright = "2023, University of Stuttgart"
+author = "st170001@stud.uni-stuttgart.de"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

@@ -1,14 +1,12 @@
 name: Evalquiz check for code typing, linting and formatting
 
 on:
-  workflow_dispatch:
-#on:
-#  push:
-#    branches:
-#      - master
-#  pull_request:
-#    branches:
-#      - master
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
 
 jobs:
   build-ubuntu:
