@@ -8,9 +8,6 @@ services:
       - 50051:50051
   material-server-db:
     image: mongo
-    restart: always
-    volumes:
-      - material-server-mongodb:/data/db
   mongoexpress:
     image: mongo-express
     ports:
@@ -19,5 +16,3 @@ services:
       - material-server-db
     environment:
       - ME_CONFIG_MONGODB_URL=mongodb://db:27017
-volumes:
-  material-server-mongodb:
