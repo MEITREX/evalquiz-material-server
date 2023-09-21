@@ -1,5 +1,7 @@
 name: Evalquiz check for code typing, linting and formatting
 
+on:
+  workflow_dispatch:
 #on:
 #  push:
 #    branches:
