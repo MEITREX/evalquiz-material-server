@@ -13,8 +13,11 @@ jobs:
       pages: write
       id-token: write
     steps:
+    - uses: actions/checkout@v3
+      with:
+        repository: legendofa/sphinx-notes-recursive
     - id: deployment
-      uses: ./actions/sphinx-notes/action.yml
+      uses: ./action.yml
       with:
         requirements_path: ./requirements.txt
         publish: true
