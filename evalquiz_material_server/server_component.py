@@ -68,7 +68,9 @@ class MaterialServerService(MaterialServerBase):
             material_upload_data, "material_upload_data"
         )
         if metadata is not None and type == "metadata":
+            print(metadata, flush=True)
             extension = MimetypeResolver.fixed_guess_extension(metadata.mimetype)
+            print(extension, flush=True)
             if extension is None:
                 raise NoMimetypeMappingException()
             async_iterator_bytes = self._to_async_iterator_bytes(
