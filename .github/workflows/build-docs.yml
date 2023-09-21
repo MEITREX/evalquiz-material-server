@@ -14,7 +14,7 @@ jobs:
       id-token: write
     steps:
     - id: deployment
-      uses: ./.github/workflows/sphinx-notes-mod.yml
+      uses: ./actions/sphinx-notes/action.yml
       with:
         requirements_path: ./requirements.txt
         publish: true
