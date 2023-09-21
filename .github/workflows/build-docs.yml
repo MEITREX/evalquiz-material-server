@@ -17,7 +17,7 @@ jobs:
       with:
         repository: legendofa/sphinx-notes-recursive
     - id: deployment
-      uses: ./action.yml
+      uses: action.yml
       with:
         requirements_path: ./requirements.txt
         publish: true
