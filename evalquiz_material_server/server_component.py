@@ -31,7 +31,9 @@ class MaterialServerService(MaterialServerBase):
     def __init__(
         self,
         material_storage_path: Path,
-        path_dictionary_controller: PathDictionaryController = PathDictionaryController(MongoClient("material-server-db", 27017)),
+        path_dictionary_controller: PathDictionaryController = PathDictionaryController(
+            MongoClient("material-server-db", 27017)
+        ),
     ) -> None:
         """Constructor of MaterialServerService.
         Creates `material_storage_path` folder, if not existent.
@@ -68,9 +70,7 @@ class MaterialServerService(MaterialServerBase):
             material_upload_data, "material_upload_data"
         )
         if metadata is not None and type == "metadata":
-            print(metadata, flush=True)
             extension = MimetypeResolver.fixed_guess_extension(metadata.mimetype)
-            print(extension, flush=True)
             if extension is None:
                 raise NoMimetypeMappingException()
             async_iterator_bytes = self._to_async_iterator_bytes(

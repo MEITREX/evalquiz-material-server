@@ -98,8 +98,7 @@ def material_server_service() -> Generator[MaterialServerService, None, None]:
     if not os.path.exists(material_storage_path):
         os.makedirs(material_storage_path)
     path_dictionary_controller = PathDictionaryController(
-        MongoClient("material-server-db", 27017),
-        "local_path_test_db"
+        MongoClient("material-server-db", 27017), "local_path_test_db"
     )
     path_dictionary_controller.mongodb_client.drop_database("lecture_material_test_db")
     material_server_service = MaterialServerService(

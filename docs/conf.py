@@ -10,7 +10,7 @@ import os
 import sys
 import sphinx_rtd_theme
 
-# This is to prevent mypy from declaring sphinx_rtd_theme as a missing import. 
+# This is to prevent mypy from declaring sphinx_rtd_theme as a missing import.
 sphinx_rtd_theme
 
 sys.path.insert(0, os.path.abspath(".."))
