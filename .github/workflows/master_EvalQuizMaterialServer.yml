@@ -11,38 +11,21 @@ jobs:
     runs-on: 'ubuntu-latest'
 
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
 
-    - name: Log in to registry
-      uses: docker/login-action@v2
-      with:
-        registry: https://evalquizcontainers.azurecr.io/
-        username: ${{ secrets.AzureAppService_ContainerUsername_94f32dcd15f8459faea1082327732dca }}
-        password: ${{ secrets.AzureAppService_ContainerPassword_30f3974b3a3e467da667ca372fa1cc26 }}
+      - name: Log in to registry
+        uses: docker/login-action@v2
+        with:
+          registry: https://evalquizcontainers.azurecr.io/
+          username: ${{ secrets.AzureAppService_ContainerUsername_94f32dcd15f8459faea1082327732dca }}
+          password: ${{ secrets.AzureAppService_ContainerPassword_30f3974b3a3e467da667ca372fa1cc26 }}
 
-    - name: Build and push container image to registry
-      uses: docker/build-push-action@v3
-      with:
-        push: true
-        tags: evalquizcontainers.azurecr.io/${{ secrets.AzureAppService_ContainerUsername_94f32dcd15f8459faea1082327732dca }}/evalquiz-material-server:${{ github.sha }}
-        file: ./Dockerfile
-
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build
-    environment:
-      name: 'production'
-      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
-
-    steps:
-    - name: Deploy to Azure Web App
-      id: deploy-to-webapp
-      uses: azure/webapps-deploy@v2
-      with:
-        app-name: 'EvalQuizMaterialServer'
-        slot-name: 'production'
-        publish-profile: ${{ secrets.AzureAppService_PublishProfile_948d97196a564141922113f7b2fbe88e }}
-        images: 'evalquizcontainers.azurecr.io/${{ secrets.AzureAppService_ContainerUsername_94f32dcd15f8459faea1082327732dca }}/evalquiz-material-server:${{ github.sha }}'
+      - name: Build and push container image to registry
+        uses: docker/build-push-action@v3
+        with:
+          push: true
+          tags: evalquizcontainers.azurecr.io/${{ secrets.AzureAppService_ContainerUsername_94f32dcd15f8459faea1082327732dca }}/evalquiz-material-server:${{ github.sha }}
+          file: ./production-dockerfile
