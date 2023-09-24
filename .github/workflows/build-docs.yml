@@ -1,10 +1,9 @@
 name: Deploy Sphinx documentation to Pages
 
 on:
-#  push:
-#    branches:
-#      - master
-  workflow_dispatch:
+  push:
+    branches:
+      - deploy
 
 jobs:
   pages:
@@ -16,9 +15,9 @@ jobs:
       pages: write
       id-token: write
     steps:
-    - id: deployment
-      uses: legendofa/sphinx-notes-recursive@v3
-      with:
-        requirements_path: ./requirements.txt
-        publish: true
-        sphinx_version: 6.2.1
+      - id: deployment
+        uses: legendofa/sphinx-notes-recursive@v3
+        with:
+          requirements_path: ./requirements.txt
+          publish: true
+          sphinx_version: 6.2.1
