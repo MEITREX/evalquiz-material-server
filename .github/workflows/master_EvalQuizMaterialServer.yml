@@ -27,5 +27,5 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           push: true
-          tags: evalquizcontainers.azurecr.io/${{ secrets.AzureAppService_ContainerUsername_94f32dcd15f8459faea1082327732dca }}/evalquiz-material-server:${{ github.sha }}
+          tags: evalquizcontainers.azurecr.io/evalquiz-material-server
           file: ./production-dockerfile
