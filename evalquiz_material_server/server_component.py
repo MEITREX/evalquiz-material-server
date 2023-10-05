@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 import asyncio
 from blake3 import blake3
 from pathlib import Path
@@ -99,7 +100,8 @@ class MaterialServerService(MaterialServerBase):
         Returns:
             Path: Path to the file in `/tmp`.
         """
-        local_path = Path("/tmp/current_evalquiz_upload")
+        timestamp = datetime.utcnow().isoformat()
+        local_path = Path("/tmp/current_evalquiz_upload_" + timestamp)
         with open(local_path, "ab") as local_file:
             local_file.truncate(0)
             while True:
